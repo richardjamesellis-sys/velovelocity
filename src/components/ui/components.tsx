@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -126,78 +127,119 @@ const CardContent = React.forwardRef<
 CardContent.displayName = "CardContent"
 
 // Dialog
-const Dialog = DialogPrimitive.Root
-const DialogTrigger = DialogPrimitive.Trigger
-const DialogPortal = DialogPrimitive.Portal
-const DialogClose = DialogPrimitive.Close
+// A glass panel that grows out of the control that opened it and shrinks back into it.
+const panelSpring = { type: "spring", bounce: 0, duration: 0.42 } as const
 
-const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-  />
-))
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
+interface GlassDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  trigger: React.ReactElement
+  title: string
+  children: React.ReactNode
+}
 
-const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-))
-DialogContent.displayName = DialogPrimitive.Content.displayName
+function GlassDialog({ open, onOpenChange, trigger, title, children }: GlassDialogProps) {
+  const triggerRef = React.useRef<HTMLElement>(null)
 
-const DialogHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
-)
-DialogHeader.displayName = "DialogHeader"
+  // Anchor the panel's transform origin to the centre of the trigger
+  const anchorToTrigger = React.useCallback((el: HTMLDivElement | null) => {
+    const t = triggerRef.current
+    if (!el || !t) return
+    const r = t.getBoundingClientRect()
+    const parent = el.offsetParent?.getBoundingClientRect() ?? { left: 0, top: 0 }
+    const x = r.left + r.width / 2 - parent.left - el.offsetLeft
+    const y = r.top + r.height / 2 - parent.top - el.offsetTop
+    el.style.transformOrigin = `${x}px ${y}px`
+  }, [])
 
-const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
-    ref={ref}
-    className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className
-    )}
-    {...props}
-  />
-))
-DialogTitle.displayName = DialogPrimitive.Title.displayName
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Trigger asChild ref={triggerRef as React.Ref<HTMLButtonElement>}>
+        {trigger}
+      </DialogPrimitive.Trigger>
+      <AnimatePresence>
+        {open && (
+          <DialogPrimitive.Portal forceMount>
+            <DialogPrimitive.Overlay asChild forceMount>
+              <motion.div
+                className="fixed inset-0 z-50 bg-scrim"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+              />
+            </DialogPrimitive.Overlay>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+              <DialogPrimitive.Content asChild forceMount aria-describedby={undefined}>
+                <motion.div
+                  ref={anchorToTrigger}
+                  className="glass-thick pointer-events-auto relative w-full max-w-sm rounded-[28px] p-4 pt-3 text-label outline-none"
+                  initial={{ opacity: 0, scale: 0.3 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.3 }}
+                  transition={{ ...panelSpring, opacity: { duration: 0.18 } }}
+                >
+                  <div className="relative flex h-11 items-center justify-center">
+                    <DialogPrimitive.Title className="text-headline">{title}</DialogPrimitive.Title>
+                    <DialogPrimitive.Close
+                      className="press absolute right-0 flex h-8 w-8 items-center justify-center rounded-full bg-fill-3 text-label-2"
+                      aria-label="Close"
+                    >
+                      <X className="h-4 w-4" strokeWidth={2.5} />
+                    </DialogPrimitive.Close>
+                  </div>
+                  <div className="mt-2">{children}</div>
+                </motion.div>
+              </DialogPrimitive.Content>
+            </div>
+          </DialogPrimitive.Portal>
+        )}
+      </AnimatePresence>
+    </DialogPrimitive.Root>
+  )
+}
+
+// Segmented control
+interface SegmentedControlProps<T extends string> {
+  id: string
+  label: string
+  value: T | undefined
+  options: { value: T; label: React.ReactNode }[]
+  onChange: (value: T) => void
+}
+
+function SegmentedControl<T extends string>({ id, label, value, options, onChange }: SegmentedControlProps<T>) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex rounded-[9px] bg-fill-3 p-[2px]">
+      {options.map((o) => {
+        const selected = o.value === value
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "relative h-7 min-w-[64px] flex-1 rounded-[7px] px-3 text-footnote transition-colors",
+              selected ? "font-semibold text-label" : "font-medium text-label-2"
+            )}
+          >
+            {selected && (
+              <motion.span
+                layoutId={`segment-${id}`}
+                className="absolute inset-0 rounded-[7px] bg-segment"
+                style={{ boxShadow: "var(--shadow-sm)" }}
+                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+              />
+            )}
+            <span className="relative">{o.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export {
   Button,
@@ -207,10 +249,6 @@ export {
   CardHeader,
   CardTitle,
   CardContent,
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
+  GlassDialog,
+  SegmentedControl,
 }

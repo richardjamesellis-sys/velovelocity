@@ -1,35 +1,27 @@
 import { useEffect, useState, useMemo } from "react"
 import { useTheme } from "next-themes"
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet"
-import { 
-  Sun, 
-  Cloud, 
-  CloudRain, 
-  CloudLightning, 
-  CloudFog, 
-  CloudDrizzle, 
-  RefreshCw, 
-  UploadCloud, 
+import { AnimatePresence, MotionConfig, motion } from "motion/react"
+import {
+  Sun,
+  Cloud,
+  CloudRain,
+  CloudLightning,
+  CloudFog,
+  CloudDrizzle,
+  RotateCcw,
+  FileUp,
   Navigation,
-  SunDim,
-  FileWarning,
+  TriangleAlert,
   Compass,
   Settings,
-  CloudSnow
+  CloudSnow,
+  Wind
 } from "lucide-react"
 import L from "leaflet"
 
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from "@/components/ui/components"
+import { GlassDialog, SegmentedControl } from "@/components/ui/components"
+import { Scrubber } from "@/components/ui/scrubber"
 
 // Free Map Tile Providers (No API key required, no watermarks)
 const MAP_TILES = {
@@ -76,20 +68,12 @@ function getWeatherDetails(code: number) {
   return { text: "Cloudy", Icon: Cloud }
 }
 
-// Custom blue pin icon using Leaflet's DivIcon to avoid Vite asset resolution issues
+// Apple Maps–style location dot (DivIcon avoids Vite asset resolution issues)
 const customMarkerIcon = L.divIcon({
   className: "custom-div-marker",
-  html: `
-    <div class="relative flex items-center justify-center">
-      <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-md">
-        <path d="M16 0C7.16 0 0 7.16 0 16C0 28 16 42 16 42C16 42 32 28 32 16C32 7.16 24.84 0 16 0Z" fill="#3b82f6"/>
-        <circle cx="16" cy="16" r="6" fill="white"/>
-      </svg>
-      <div class="absolute -bottom-1 w-3.5 h-1 bg-black/40 blur-[1px] rounded-full"></div>
-    </div>
-  `,
-  iconSize: [32, 42],
-  iconAnchor: [16, 42],
+  html: `<div class="vv-marker"></div>`,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
 });
 
 // Helper: Haversine distance in km
@@ -219,7 +203,8 @@ function generateMockWeatherForPoint(index: number, activePoint: RoutePoint) {
 }
 
 export default function App() {
-  const { setTheme, resolvedTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
+  const [settingsOpen, setSettingsOpen] = useState(false)
   
   // State variables (Starts empty with no default route loaded)
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
@@ -227,7 +212,6 @@ export default function App() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isCustomRoute, setIsCustomRoute] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [windUnit, setWindUnit] = useState<'mph' | 'kph'>('mph');
   const [weatherLoading, setWeatherLoading] = useState(false);
@@ -415,15 +399,8 @@ export default function App() {
     reader.readAsText(file);
   };
 
-  // Refresh toggle: preserves GPX route points and location, resets activeIndex to 0
-  const handleRefresh = () => {
-    if (routePoints.length === 0) return;
-    setIsRefreshing(true);
-    setActiveIndex(0);
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 600);
-  };
+  // Jump the timeline back to the start of the route
+  const handleBackToStart = () => setActiveIndex(0);
 
   // Clear route state back to empty
   const handleClearRoute = () => {
@@ -441,16 +418,26 @@ export default function App() {
       windKph: "--",
       windDir: 0,
       temp: "--",
-      weatherText: weatherLoading ? "Loading weather forecast..." : "No route loaded",
+      weatherText: weatherLoading ? "Loading forecast…" : "No route loaded",
       WeatherIcon: Compass
     };
   }, [milestoneWeatherData, milestoneActiveIndex, weatherLoading]);
 
+  const totalMi = routePointsWithDetails[routePointsWithDetails.length - 1]?.distanceMi || 0;
+  const unitLabel = windUnit === 'mph' ? 'mph' : 'km/h';
+  const stopLabel = activeIndex === 0
+    ? 'Start'
+    : milestoneActiveIndex === milestoneIndices.length - 1 ? 'Finish' : `Mile ${activePoint?.distanceMi ?? 0}`;
+
   return (
-    <div className="min-h-screen flex items-center justify-center relative p-4 transition-colors duration-300">
-      
-      {/* Background Animated Particles */}
-      <div className="background-animation">
+    <MotionConfig reducedMotion="user">
+    <div
+      onDragOver={handleDragOver}
+      className="min-h-screen flex items-center justify-center relative px-4 py-6 sm:py-10"
+    >
+
+      {/* Background: soft glow with slow wind streaks */}
+      <div className="background-animation" aria-hidden="true">
         <div className="wind-particle p1"></div>
         <div className="wind-particle p2"></div>
         <div className="wind-particle p3"></div>
@@ -458,340 +445,300 @@ export default function App() {
         <div className="wind-particle p5"></div>
       </div>
 
-      {/* Main Container Card */}
-      <div 
-        onDragOver={handleDragOver}
-        className="w-full max-w-md relative p-1"
-      >
-        <Card className="bg-[#0f172a]/80 dark:bg-slate-950/60 backdrop-blur-2xl border border-slate-800/80 dark:border-white/10 shadow-2xl rounded-[32px] overflow-hidden text-white transition-all duration-300 relative">
-          
-          {/* Settings trigger top-right */}
-          <div className="absolute top-6 right-6 z-20">
-            <Dialog>
-              <DialogTrigger asChild>
-                <button 
-                  className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 active:scale-95 transition-all outline-none"
-                  title="Open Settings"
-                >
-                  <Settings className="w-5 h-5" />
-                </button>
-              </DialogTrigger>
-              <DialogContent className="bg-slate-900/90 dark:bg-slate-950/90 border border-slate-800/85 text-white backdrop-blur-xl rounded-2xl p-6 max-w-xs sm:max-w-sm">
-                <DialogHeader>
-                  <DialogTitle className="text-lg font-bold">Settings</DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col gap-5 py-4">
-                  {/* Wind speed unit toggle */}
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm font-medium text-slate-300">Wind Speed Unit</span>
-                    <div className="flex items-center bg-white/5 rounded-lg p-1 border border-white/10">
-                      <button
-                        onClick={() => setWindUnit('mph')}
-                        className={`text-xs px-3 py-1.5 rounded-md font-semibold transition-all ${
-                          windUnit === 'mph'
-                            ? 'bg-blue-500 text-white shadow-sm'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        MPH
-                      </button>
-                      <button
-                        onClick={() => setWindUnit('kph')}
-                        className={`text-xs px-3 py-1.5 rounded-md font-semibold transition-all ${
-                          windUnit === 'kph'
-                            ? 'bg-blue-500 text-white shadow-sm'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        KPH
-                      </button>
-                    </div>
-                  </div>
+      {/* Main glass card */}
+      <main className="glass w-full max-w-md rounded-[36px] p-3 text-label">
 
-                  {/* Theme toggle */}
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm font-medium text-slate-300">Appearance</span>
-                    <button
-                      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-                      className="flex items-center gap-2 text-xs font-semibold py-1.5 px-3 bg-white/5 hover:bg-white/10 active:bg-white/15 rounded-lg border border-white/10 text-slate-300 hover:text-white transition-all duration-200"
-                    >
-                      {resolvedTheme === 'dark' ? (
-                        <>
-                          <Sun className="w-3.5 h-3.5 text-blue-400" />
-                          <span>Light Mode</span>
-                        </>
-                      ) : (
-                        <>
-                          <SunDim className="w-3.5 h-3.5 text-blue-400" />
-                          <span>Dark Mode</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Map Style toggle */}
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm font-medium text-slate-300">Map Style</span>
-                    <div className="flex items-center bg-white/5 rounded-lg p-1 border border-white/10">
-                      <button
-                        onClick={() => setMapStyle('osm')}
-                        className={`text-xs px-3 py-1.5 rounded-md font-semibold transition-all ${
-                          mapStyle === 'osm'
-                            ? 'bg-blue-500 text-white shadow-sm'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        Standard
-                      </button>
-                      <button
-                        onClick={() => setMapStyle('cyclosm')}
-                        className={`text-xs px-3 py-1.5 rounded-md font-semibold transition-all ${
-                          mapStyle === 'cyclosm'
-                            ? 'bg-blue-500 text-white shadow-sm'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        Cycling
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <CardHeader className="text-center pb-2 pt-8">
-            <CardTitle className="italic text-3xl font-extrabold tracking-wider text-white" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-              VeloVelocity
-            </CardTitle>
-            
-            {/* Location Indicators */}
-            <div className="flex items-center justify-center mt-2">
-              <h2 className="text-xl font-medium tracking-wide text-slate-100">
-                {locationName}
-              </h2>
-            </div>
-          </CardHeader>
-
-          <CardContent className="flex flex-col items-center gap-4 px-6 pb-8">
-            
-            {/* GPX File Upload Zone (Moved above the map) */}
-            <div className="w-full pb-2 flex gap-2">
-              <label className="flex-grow flex items-center justify-center gap-2 cursor-pointer text-xs font-semibold py-2.5 px-4 bg-white/5 hover:bg-white/10 active:bg-white/15 rounded-xl border border-white/10 text-slate-300 hover:text-white transition-all duration-200 text-center">
-                <UploadCloud className="w-4 h-4 text-blue-400" />
-                <span>{isCustomRoute ? "Upload new .GPX" : "Upload .GPX route"}</span>
-                <input
-                  type="file"
-                  accept=".gpx"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </label>
-              
-              {isCustomRoute && (
-                <button
-                  onClick={handleClearRoute}
-                  className="px-3 py-2 bg-red-950/20 hover:bg-red-950/40 active:scale-95 rounded-xl border border-red-500/20 text-red-300 text-xs font-semibold transition-all duration-200"
-                  title="Clear current route"
-                >
-                  Clear Route
-                </button>
-              )}
-            </div>
-
-            {/* Map Container */}
-            <div className="relative w-full h-80 rounded-2xl overflow-hidden border border-slate-800/80 shadow-inner z-0">
-              <MapContainer 
-                center={[52.3364, -2.0598]} 
-                zoom={12} 
-                className="w-full h-full" 
-                zoomControl={true} 
-                attributionControl={false}
-              >
-                <TileLayer 
-                  key={mapStyle} 
-                  url={MAP_TILES[mapStyle].url} 
-                  attribution={MAP_TILES[mapStyle].attribution} 
-                />
-                
-                {routePoints.length > 0 && (
-                  <>
-                    {/* Route Polyline (Outline weight set to 2) */}
-                    <Polyline 
-                      positions={routePoints.map(p => [p.lat, p.lon])} 
-                      color="#3b82f6" 
-                      weight={2} 
-                      opacity={0.85}
-                    />
-
-                    {/* Highlighted active marker */}
-                    {activePoint && (
-                      <Marker 
-                        position={[activePoint.lat, activePoint.lon]} 
-                        icon={customMarkerIcon} 
-                      />
-                    )}
-
-                    {/* Dynamic map focus bounds */}
-                    {activePoint && (
-                      <MapController 
-                        points={routePoints} 
-                        activePoint={activePoint} 
-                      />
-                    )}
-                  </>
-                )}
-              </MapContainer>
-            </div>
-
-            {/* Error Message */}
-            {errorMessage && (
-              <div className="w-full flex items-center gap-2 p-3 bg-red-950/40 border border-red-500/20 rounded-xl text-red-300 text-xs font-medium">
-                <FileWarning className="w-4 h-4 shrink-0 text-red-400" />
-                <span>{errorMessage}</span>
-              </div>
-            )}
-
-            {/* Scrub Slider Container (Positioned just below the map) */}
-            <div className="w-full bg-slate-900/40 border border-white/5 rounded-2xl p-4 mt-1 flex flex-col gap-3">
-              {activePoint ? (
-                <>
-                  {/* Slider Metrics Info Header */}
-                  <div className="flex items-center justify-between text-xs text-slate-400 font-medium px-1 animate-in fade-in duration-300">
-                    <div className="flex items-center gap-1">
-                      <Compass className="w-3.5 h-3.5 text-blue-400" />
-                      <span>
-                        {activePoint?.distanceMi || 0} mi / {routePointsWithDetails[routePointsWithDetails.length - 1]?.distanceMi || 0} mi
-                      </span>
-                    </div>
-                    <span>Elev: {Math.round(activePoint?.ele || 0)}m</span>
-                  </div>
-
-                  {/* Custom ShadCN-styled Timeline Slider */}
-                  <div className="relative w-full flex items-center h-5">
-                    {/* Background Track */}
-                    <div className="absolute left-0 right-0 h-1.5 rounded-full bg-white/10 pointer-events-none" />
-                    
-                    {/* Active Slider Fill Track */}
-                    <div 
-                      className="absolute left-0 h-1.5 rounded-full bg-blue-500 pointer-events-none" 
-                      style={{ 
-                        width: milestoneIndices.length > 1 
-                          ? `${(milestoneActiveIndex / (milestoneIndices.length - 1)) * 100}%` 
-                          : '0%' 
-                      }}
-                    />
-                    
-                    {/* Native Range input overlaid invisible for standard interactions */}
-                    <input
-                      type="range"
-                      min={0}
-                      max={milestoneIndices.length > 0 ? milestoneIndices.length - 1 : 0}
-                      value={milestoneActiveIndex}
-                      onChange={(e) => {
-                        const idx = Number(e.target.value);
-                        setActiveIndex(milestoneIndices[idx]);
-                      }}
-                      className="absolute inset-x-0 w-full h-5 opacity-0 cursor-pointer z-10"
-                    />
-                    
-                    {/* Slider Circle Thumb */}
-                    <div 
-                      className="absolute w-4 h-4 rounded-full border border-blue-400 bg-white shadow-md pointer-events-none transition-transform z-0"
-                      style={{ 
-                        left: milestoneIndices.length > 1 
-                          ? `calc(${(milestoneActiveIndex / (milestoneIndices.length - 1)) * 100}% - 8px)` 
-                          : '0%'
-                      }}
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="text-center text-xs text-slate-500 font-medium py-1.5">
-                  No GPX route loaded to scrub.
-                </div>
-              )}
-            </div>
-
-            {/* Weather Metrics Card */}
-            <div className="w-full bg-[#090d16] border border-white/5 rounded-2xl p-5 shadow-lg flex flex-col gap-4 animate-in fade-in duration-300">
-              
-              {/* Wind Speed MPH / KPH Grid (Toggled in Settings View) */}
-              <div className="flex flex-col items-center justify-center py-2 text-center">
-                <span className="text-[56px] leading-none font-bold text-blue-500 tracking-tighter">
-                  {windUnit === 'mph' ? weather.windMph : weather.windKph}
-                </span>
-                <span className="text-xs uppercase tracking-wider font-semibold text-slate-400 mt-2">
-                  {windUnit.toUpperCase()}
-                </span>
-              </div>
-
-              {/* Horizontal Divider Line */}
-              <div className="w-full h-[1px] bg-white/10" />
-
-              {/* Temperature and Condition Description */}
-              <div className="flex items-center justify-center gap-2 text-slate-100 font-medium text-lg">
-                <weather.WeatherIcon className="w-6 h-6 text-blue-400" />
-                {activePoint ? (
-                  <>
-                    <span>{weather.temp}°C</span>
-                    <span className="text-slate-500 font-normal">•</span>
-                    <span>{weather.weatherText}</span>
-                  </>
-                ) : (
-                  <span className="text-slate-400 text-sm">Upload a GPX file to start</span>
-                )}
-              </div>
-            </div>
-
-            {/* Wind Degree + Arrow Vane (Only displayed if active route exists) */}
-            {activePoint && (
-              <div className="flex flex-col items-center gap-1.5 mt-1 animate-in fade-in duration-300">
-                <div className="flex items-center justify-center gap-2 text-slate-300 font-semibold text-sm">
-                  <Navigation 
-                    className="w-5 h-5 text-blue-400 transition-transform duration-200" 
-                    style={{ transform: `rotate(${weather.windDir - 45}deg)` }}
-                  />
-                  <span>{weather.windDir}° {getCardinalDirection(weather.windDir)}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Refresh Button Zone (Hairline border removed, only rendered if route loaded) */}
-            {routePoints.length > 0 && (
-              <div className="w-full mt-2 flex justify-center animate-in fade-in duration-300">
-                <button 
-                  onClick={handleRefresh}
-                  className="p-2 text-slate-500 hover:text-blue-400 active:scale-90 transition-all outline-none"
-                  title="Refresh timeline (preserves custom route)"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-            )}
-
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Drag & Drop Overlay Portal */}
-      {isDragging && (
-        <div 
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-6"
-        >
-          <div className="border-2 border-dashed border-blue-500 rounded-3xl p-12 bg-slate-900/50 flex flex-col items-center gap-4 text-center max-w-sm pointer-events-none animate-in fade-in zoom-in-95">
-            <UploadCloud className="w-16 h-16 text-blue-400 animate-bounce" />
-            <h3 className="text-xl font-bold text-white">Import Route</h3>
-            <p className="text-sm text-slate-400">
-              Drop your .GPX file anywhere on the screen to parse track points and view weather stats.
+        {/* Header */}
+        <header className="flex items-start justify-between gap-3 px-3 pt-3 pb-4">
+          <div className="min-w-0">
+            <h1 className="text-title1">VeloVelocity</h1>
+            <p className={`text-body mt-0.5 truncate ${activePoint ? 'text-label' : 'text-label-2'}`}>
+              {locationName}
             </p>
           </div>
+
+          <GlassDialog
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            title="Settings"
+            trigger={
+              <button
+                className="press mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fill-3 text-label-2"
+                aria-label="Settings"
+              >
+                <Settings className="h-[18px] w-[18px]" strokeWidth={2.2} />
+              </button>
+            }
+          >
+            <div className="section divide-y divide-separator overflow-hidden">
+              <div className="flex min-h-[52px] items-center justify-between gap-4 px-4 py-2">
+                <span className="text-subhead">Wind speed</span>
+                <SegmentedControl
+                  id="unit"
+                  label="Wind speed unit"
+                  value={windUnit}
+                  onChange={setWindUnit}
+                  options={[{ value: 'mph', label: 'mph' }, { value: 'kph', label: 'km/h' }]}
+                />
+              </div>
+              <div className="flex min-h-[52px] items-center justify-between gap-4 px-4 py-2">
+                <span className="text-subhead">Map</span>
+                <SegmentedControl
+                  id="map"
+                  label="Map style"
+                  value={mapStyle}
+                  onChange={setMapStyle}
+                  options={[{ value: 'osm', label: 'Standard' }, { value: 'cyclosm', label: 'Cycling' }]}
+                />
+              </div>
+              <div className="flex min-h-[52px] items-center justify-between gap-4 px-4 py-2">
+                <span className="text-subhead">Appearance</span>
+                <SegmentedControl
+                  id="theme"
+                  label="Appearance"
+                  value={theme as 'light' | 'dark' | 'system' | undefined}
+                  onChange={setTheme}
+                  options={[
+                    { value: 'light', label: 'Light' },
+                    { value: 'dark', label: 'Dark' },
+                    { value: 'system', label: 'Auto' }
+                  ]}
+                />
+              </div>
+            </div>
+            <p className="text-footnote px-4 pt-2 pb-1 text-label-2">
+              Auto matches your device's appearance.
+            </p>
+          </GlassDialog>
+        </header>
+
+        <div className="flex flex-col gap-3">
+
+          {/* Route import */}
+          <div className="flex gap-2">
+            <label className="press flex h-11 flex-grow cursor-pointer items-center justify-center gap-2 rounded-full bg-tint-fill text-subhead font-semibold text-tint has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-tint">
+              <FileUp className="h-[18px] w-[18px]" strokeWidth={2.2} />
+              <span>{isCustomRoute ? "Choose another route" : "Choose GPX route"}</span>
+              <input
+                type="file"
+                accept=".gpx"
+                onChange={handleFileChange}
+                className="sr-only"
+              />
+            </label>
+
+            {isCustomRoute && (
+              <button
+                onClick={handleClearRoute}
+                className="press h-11 rounded-full bg-fill-3 px-5 text-subhead font-semibold text-red"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Map */}
+          <div className="relative z-0 h-80 w-full overflow-hidden rounded-[24px]">
+            <MapContainer
+              center={[52.3364, -2.0598]}
+              zoom={12}
+              className="h-full w-full"
+              zoomControl={true}
+              attributionControl={true}
+            >
+              <TileLayer
+                key={mapStyle}
+                url={MAP_TILES[mapStyle].url}
+                attribution={MAP_TILES[mapStyle].attribution}
+              />
+
+              {routePoints.length > 0 && (
+                <>
+                  {/* Route line with a casing, like Apple Maps */}
+                  <Polyline
+                    positions={routePoints.map(p => [p.lat, p.lon])}
+                    pathOptions={{ className: "vv-route-casing", weight: 7, opacity: 0.9, lineCap: "round", lineJoin: "round" }}
+                  />
+                  <Polyline
+                    positions={routePoints.map(p => [p.lat, p.lon])}
+                    pathOptions={{ className: "vv-route", weight: 4, opacity: 1, lineCap: "round", lineJoin: "round" }}
+                  />
+
+                  {activePoint && (
+                    <Marker
+                      position={[activePoint.lat, activePoint.lon]}
+                      icon={customMarkerIcon}
+                    />
+                  )}
+
+                  {activePoint && (
+                    <MapController
+                      points={routePoints}
+                      activePoint={activePoint}
+                    />
+                  )}
+                </>
+              )}
+            </MapContainer>
+          </div>
+
+          {/* Error */}
+          <AnimatePresence initial={false}>
+            {errorMessage && (
+              <motion.div
+                role="alert"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+                className="overflow-hidden"
+              >
+                <div className="flex items-start gap-2.5 rounded-[18px] bg-red-fill px-4 py-3 text-footnote font-medium text-red">
+                  <TriangleAlert className="mt-px h-4 w-4 shrink-0" strokeWidth={2.2} />
+                  <span>{errorMessage}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Route position */}
+          <section className="section px-4 pt-3 pb-1">
+            {activePoint ? (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-headline tabular-nums">{stopLabel}</p>
+                    <p className="text-footnote text-label-2 tabular-nums">
+                      <span className="whitespace-nowrap">{activePoint.distanceMi || 0} of {totalMi} mi</span>
+                      {" · "}
+                      <span className="whitespace-nowrap">{Math.round(activePoint.ele || 0)} m elevation</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleBackToStart}
+                    disabled={activeIndex === 0}
+                    className="press flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-fill-3 px-3 text-footnote font-semibold text-tint"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    Back to start
+                  </button>
+                </div>
+
+                <Scrubber
+                  className="mt-1"
+                  label="Position along route"
+                  count={milestoneIndices.length}
+                  value={milestoneActiveIndex}
+                  valueText={`${stopLabel}, ${activePoint.distanceMi || 0} of ${totalMi} miles`}
+                  onChange={(idx) => setActiveIndex(milestoneIndices[idx])}
+                />
+              </>
+            ) : (
+              <p className="text-footnote py-3 pb-4 text-center text-label-2">
+                Choose a GPX route to scrub along it in 5-mile steps.
+              </p>
+            )}
+          </section>
+
+          {/* Wind */}
+          <section className="section px-5 pt-4 pb-4">
+            <div className="flex items-center gap-1.5 text-footnote font-medium text-label-2">
+              <Wind className="h-3.5 w-3.5" strokeWidth={2.4} />
+              <span>Wind</span>
+              {weatherLoading && <span className="ml-auto">Updating…</span>}
+            </div>
+
+            <div className="flex items-end justify-between gap-4 pt-2">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-hero">
+                  {windUnit === 'mph' ? weather.windMph : weather.windKph}
+                </span>
+                <span className="text-body font-medium text-label-2">{unitLabel}</span>
+              </div>
+
+              {activePoint && (
+                <div className="flex flex-col items-center gap-1 pb-2">
+                  <WindArrow degrees={weather.windDir} />
+                  <span className="text-footnote font-semibold tabular-nums text-label-2">
+                    {weather.windDir}° {getCardinalDirection(weather.windDir)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="my-3 h-px bg-separator" />
+
+            <div className="flex items-center justify-between gap-3 text-subhead">
+              {activePoint ? (
+                <>
+                  <span className="flex items-center gap-2">
+                    <weather.WeatherIcon className="h-5 w-5 text-tint" strokeWidth={2} />
+                    <span>{weather.weatherText}</span>
+                  </span>
+                  <span className="font-semibold tabular-nums">{weather.temp}°C</span>
+                </>
+              ) : (
+                <span className="text-label-2">Wind and weather appear here for each 5-mile point.</span>
+              )}
+            </div>
+          </section>
+
         </div>
-      )}
-      
+      </main>
+
+      {/* Drag & drop overlay */}
+      <AnimatePresence>
+        {isDragging && (
+          <motion.div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-6 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.94 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.94 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+              className="glass-thick pointer-events-none flex max-w-sm flex-col items-center gap-3 rounded-[32px] border-2 border-dashed border-tint px-10 py-12 text-center"
+            >
+              <FileUp className="h-12 w-12 text-tint" strokeWidth={1.6} />
+              <h3 className="text-title1">Drop to import</h3>
+              <p className="text-subhead text-label-2">
+                Release your .gpx file to load the route and its wind forecast.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
+    </MotionConfig>
   )
+}
+
+// Wind direction arrow that turns the short way round with a spring
+function WindArrow({ degrees }: { degrees: number }) {
+  const [prev, setPrev] = useState(degrees);
+  const [angle, setAngle] = useState(degrees);
+  if (degrees !== prev) {
+    setPrev(degrees);
+    setAngle(angle + ((((degrees - angle) % 360) + 540) % 360) - 180);
+  }
+
+  return (
+    <motion.span
+      className="flex h-8 w-8 items-center justify-center rounded-full bg-tint-fill text-tint"
+      animate={{ rotate: angle - 45 }}
+      initial={false}
+      transition={{ type: "spring", bounce: 0, duration: 0.6 }}
+      aria-hidden="true"
+    >
+      <Navigation className="h-4 w-4" strokeWidth={2.4} fill="currentColor" />
+    </motion.span>
+  );
 }

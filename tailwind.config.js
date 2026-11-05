@@ -8,6 +8,19 @@ export default {
   theme: {
     extend: {
       colors: {
+        label: "var(--label)",
+        "label-2": "var(--label-2)",
+        "label-3": "var(--label-3)",
+        separator: "var(--separator)",
+        fill: "var(--fill)",
+        "fill-3": "var(--fill-3)",
+        tint: "var(--tint)",
+        "tint-fill": "var(--tint-fill)",
+        red: "var(--red)",
+        "red-fill": "var(--red-fill)",
+        section: "var(--section)",
+        segment: "var(--segment)",
+        scrim: "var(--scrim)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

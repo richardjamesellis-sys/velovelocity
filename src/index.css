@@ -2,50 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Colour tokens modelled on Apple's semantic system colours
+ * (label hierarchy, fills, grouped backgrounds, system blue/red).
+ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    color-scheme: light;
+
+    --page: #f2f2f7;
+    --page-glow: #ffffff;
+
+    --label: #000000;
+    --label-2: rgba(60, 60, 67, 0.6);
+    --label-3: rgba(60, 60, 67, 0.3);
+    --separator: rgba(60, 60, 67, 0.18);
+
+    --fill: rgba(120, 120, 128, 0.2);
+    --fill-3: rgba(118, 118, 128, 0.12);
+
+    --tint: #007aff;
+    --tint-fill: rgba(0, 122, 255, 0.12);
+    --red: #ff3b30;
+    --red-fill: rgba(255, 59, 48, 0.12);
+
+    /* Solid surfaces sit on top of translucent materials, never glass on glass */
+    --section: #ffffff;
+    --segment: #ffffff;
+
+    /* Materials */
+    --material: rgba(236, 236, 242, 0.72);
+    --material-thick: rgba(250, 250, 252, 0.82);
+    --material-edge: rgba(255, 255, 255, 0.75);
+    --material-opaque: #f2f2f7;
+    --scrim: rgba(0, 0, 0, 0.22);
+    --shadow-lg: 0 24px 60px -12px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+
+    /* Legacy shadcn tokens, mapped onto the same palette */
+    --background: 240 24% 96%;
+    --foreground: 0 0% 0%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 211 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 93%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 240 5% 93%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 240 5% 93%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 3 100% 59%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 88%;
+    --input: 240 6% 88%;
+    --ring: 211 100% 50%;
     --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    color-scheme: dark;
+
+    --page: #2a2a2e;
+    --page-glow: #3d4149;
+
+    --label: #ffffff;
+    --label-2: rgba(235, 235, 245, 0.6);
+    --label-3: rgba(235, 235, 245, 0.3);
+    --separator: rgba(120, 120, 126, 0.5);
+
+    --fill: rgba(120, 120, 128, 0.36);
+    --fill-3: rgba(118, 118, 128, 0.24);
+
+    --tint: #0a84ff;
+    --tint-fill: rgba(10, 132, 255, 0.2);
+    --red: #ff453a;
+    --red-fill: rgba(255, 69, 58, 0.18);
+
+    --section: #3a3a3d;
+    --segment: #848489;
+
+    --material: rgba(62, 62, 67, 0.64);
+    --material-thick: rgba(70, 70, 75, 0.84);
+    --material-edge: rgba(255, 255, 255, 0.1);
+    --material-opaque: #38383b;
+    --scrim: rgba(0, 0, 0, 0.32);
+    --shadow-lg: 0 24px 60px -12px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.25);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+
+    --background: 240 5% 17%;
+    --foreground: 0 0% 100%;
+    --card: 240 3% 11%;
+    --card-foreground: 0 0% 100%;
+    --popover: 240 3% 11%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 210 100% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 3% 18%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 3% 18%;
+    --muted-foreground: 240 5% 64%;
+    --accent: 240 3% 18%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 3 100% 61%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 3% 22%;
+    --input: 240 3% 22%;
+    --ring: 210 100% 52%;
   }
 }
 
@@ -53,74 +118,262 @@
   * {
     @apply border-border;
   }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
-    @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--page);
+    color: var(--label);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 100%;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-optical-sizing: auto;
+  }
+
+  button,
+  label,
+  [role="slider"] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--tint) 55%, transparent);
+    outline-offset: 2px;
   }
 }
 
-/* Background Animation */
-.background-animation {
-  position: fixed;
-  top: 0; left: 0; width: 100vw; height: 100vh;
-  z-index: -1; pointer-events: none;
-  background: radial-gradient(circle at 50% 50%, #e2e8f0 0%, #f8fafc 100%);
-  transition: background 0.3s ease;
+@layer components {
+  /* Translucent floating material: content shows through, softened */
+  .glass {
+    background: var(--material);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    backdrop-filter: blur(40px) saturate(180%);
+    box-shadow: var(--shadow-lg), inset 0 1px 0 var(--material-edge);
+  }
+
+  .glass-thick {
+    background: var(--material-thick);
+    -webkit-backdrop-filter: blur(50px) saturate(190%);
+    backdrop-filter: blur(50px) saturate(190%);
+    box-shadow: var(--shadow-lg), inset 0 1px 0 var(--material-edge);
+  }
+
+  /* Solid grouped section that lives on a material */
+  .section {
+    background: var(--section);
+    border-radius: 22px;
+  }
+
+  /* Pressed state shows on pointer-down, then eases back on release */
+  .press {
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease, background-color 200ms ease;
+  }
+  .press:active:not(:disabled) {
+    transform: scale(0.96);
+    transition-duration: 90ms;
+  }
+  .press:disabled {
+    opacity: 0.35;
+  }
+
+  /* Type styles, roughly following Apple's text styles */
+  .text-title1 {
+    font-size: 1.75rem;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .text-headline {
+    font-size: 1.0625rem;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .text-body {
+    font-size: 1.0625rem;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+  .text-subhead {
+    font-size: 0.9375rem;
+    line-height: 1.35;
+    letter-spacing: -0.005em;
+  }
+  .text-footnote {
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+  .text-hero {
+    font-size: 5.5rem;
+    line-height: 1;
+    font-weight: 200;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-.dark .background-animation {
-  background: radial-gradient(circle at 50% 50%, #1a2235 0%, #0b0f19 100%);
+/* Background: soft glow with a few slow, faint wind streaks */
+.background-animation {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background: radial-gradient(120% 80% at 50% 0%, var(--page-glow) 0%, var(--page) 70%);
 }
 
 .wind-particle {
   position: absolute;
-  background: linear-gradient(90deg, transparent, rgba(100, 116, 139, 0.4), transparent);
-  height: 2px;
-  border-radius: 50%;
-  filter: blur(1px);
+  height: 1.5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(60, 60, 67, 0.16), transparent);
 }
 
 .dark .wind-particle {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(235, 235, 245, 0.1), transparent);
 }
 
-.p1 { top: 20%; width: 200px; animation: windBlow 8s linear infinite; }
-.p2 { top: 40%; width: 150px; animation: windBlow 6s linear infinite 2s; }
-.p3 { top: 60%; width: 300px; animation: windBlow 10s linear infinite 1s; }
-.p4 { top: 80%; width: 100px; animation: windBlow 5s linear infinite 4s; }
-.p5 { top: 10%; width: 250px; animation: windBlow 7s linear infinite 3s; }
+.p1 { top: 18%; width: 240px; animation: windBlow 22s linear infinite; }
+.p2 { top: 41%; width: 180px; animation: windBlow 18s linear infinite 6s; }
+.p3 { top: 63%; width: 320px; animation: windBlow 26s linear infinite 3s; }
+.p4 { top: 82%; width: 140px; animation: windBlow 16s linear infinite 11s; }
+.p5 { top: 9%; width: 260px; animation: windBlow 24s linear infinite 9s; }
 
 @keyframes windBlow {
-  0% { transform: translateX(-100vw); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { transform: translateX(100vw); opacity: 0; }
+  0% { transform: translateX(-30vw); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateX(110vw); opacity: 0; }
 }
 
-/* Dark Mode Leaflet Map Tiles (No API key needed, no watermarks) */
+/* ---------- Leaflet ---------- */
+
+.leaflet-container {
+  font-family: inherit;
+  background: var(--fill-3);
+}
+
+/* Dark map tiles (no API key needed) */
 .dark .leaflet-tile-pane {
-  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(1.05);
 }
 
-/* Dark mode Leaflet zoom controls */
-.dark .leaflet-control-zoom {
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 8px !important;
+/* Floating glass map controls */
+.leaflet-touch .leaflet-bar,
+.leaflet-bar {
+  border: none !important;
+  border-radius: 12px !important;
   overflow: hidden;
+  box-shadow: var(--shadow-sm) !important;
 }
-.dark .leaflet-control-zoom a {
-  background-color: rgba(15, 23, 42, 0.85) !important;
-  color: #94a3b8 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+
+.leaflet-bar a,
+.leaflet-touch .leaflet-bar a {
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 20px !important;
+  font-weight: 400;
+  color: var(--label) !important;
+  background: var(--material-thick) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 0.5px solid var(--separator) !important;
+  transition: background-color 150ms ease;
 }
-.dark .leaflet-control-zoom a:hover {
-  background-color: rgba(30, 41, 59, 0.95) !important;
-  color: #38bdf8 !important;
+
+.leaflet-bar a:last-child {
+  border-bottom: none !important;
 }
-.dark .leaflet-control-attribution {
-  background-color: rgba(15, 23, 42, 0.7) !important;
-  color: #64748b !important;
+
+.leaflet-bar a:active {
+  background: var(--section) !important;
 }
-.dark .leaflet-control-attribution a {
-  color: #38bdf8 !important;
+
+.leaflet-control-attribution {
+  font-size: 10px !important;
+  color: var(--label-2) !important;
+  background: var(--material-thick) !important;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-radius: 8px 0 0 0;
+  padding: 1px 6px !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--tint) !important;
+}
+
+/* Route line */
+.vv-route-casing {
+  stroke: #ffffff;
+}
+.dark .vv-route-casing {
+  stroke: rgba(0, 0, 0, 0.55);
+}
+.vv-route {
+  stroke: var(--tint);
+}
+
+/* Apple Maps–style location dot */
+.vv-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--tint);
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--tint) 22%, transparent), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- Accessibility preferences ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .wind-particle {
+    display: none;
+  }
+  .press,
+  .press:active:not(:disabled) {
+    transform: none;
+    transition: opacity 150ms ease, background-color 150ms ease;
+  }
+  .press:active:not(:disabled) {
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-thick,
+  .leaflet-bar a,
+  .leaflet-control-attribution {
+    background: var(--material-opaque) !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --label-2: rgba(60, 60, 67, 0.85);
+    --label-3: rgba(60, 60, 67, 0.6);
+    --separator: rgba(60, 60, 67, 0.5);
+  }
+  .dark {
+    --label-2: rgba(235, 235, 245, 0.85);
+    --label-3: rgba(235, 235, 245, 0.6);
+    --separator: rgba(235, 235, 245, 0.4);
+  }
+  .glass,
+  .glass-thick {
+    background: var(--material-opaque);
+    border: 1px solid var(--label-3);
+  }
+  .section {
+    outline: 1px solid var(--separator);
+  }
 }
